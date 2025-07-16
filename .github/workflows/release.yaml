@@ -11,19 +11,7 @@ jobs:
   esphome-release:
     runs-on: ubuntu-latest
     steps:
-    - name: ⤵️ Check out configuration from GitHub
-      uses: actions/checkout@v4
-    - name: 🗄️ Create ZIP archive
-      run: zip -r mr24hpb1.zip . -x '*.git*'
-
-    - name: 🗄️ Create TAR.GZ archive
-      run: tar --exclude='./.git' -czf mr24hpb1.tar.gz .
-
     - name: 📦 Create Release
       uses: softprops/action-gh-release@v2
-      with:
-        files: |
-          mr24hpb1.zip
-          mr24hpb1.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
