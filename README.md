@@ -110,6 +110,10 @@ If you're not getting any readings:
 1. Check the UART wiring (TX/RX might need to be swapped)
 2. Verify the baud rate matches your radar module's settings (default is 9600)
 3. Ensure the radar module is powered correctly
+## Acknowledgements
+
+- Thanks to the [ESPHome](https://esphome.io/) team for their excellent framework
+- Project structure inspired by other ESPHome external components in the community, especially [j5lien's Idasen desk controller](https://github.com/j5lien/esphome-idasen-desk-controller)
 
 ## License
 
