@@ -66,3 +66,11 @@ text_sensor:
 seeed_mr24hpb1:
   id: mr24hpb1
   uart_id: uart_id
+  presence_sensor: radar_presence
+  motion_sensor: radar_motion
+  movement_pct_sensor: radar_movement_pct
+  threshold_gear_sensor: radar_threshold_gear
+  movement_class_sensor: radar_movement_class
+  device_id_sensor: radar_device_id
+  software_version_sensor: radar_software_version
+  scene_mode_sensor: radar_scene_mode
