@@ -1,0 +1,67 @@
+---
+esphome:
+  name: test
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: wifi_ssid
+  password: wifi_password
+  fast_connect: true
+
+logger:
+
+external_components:
+  - source: components
+
+uart:
+  id: uart_id
+  tx_pin: GPIO43
+  rx_pin: GPIO44
+  baud_rate: 9600
+  parity: NONE
+  stop_bits: 1
+  data_bits: 8
+    
+binary_sensor:
+  - platform: template
+    name: "Radar Presence"
+    id: radar_presence
+    device_class: occupancy
+  - platform: template
+    name: "Radar Motion"
+    id: radar_motion
+    device_class: motion
+
+sensor:
+  - platform: template
+    name: "Radar Movement Percentage"
+    id: radar_movement_pct
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+  - platform: template
+    name: "Radar Threshold Gear"
+    id: radar_threshold_gear
+    accuracy_decimals: 0
+    entity_category: "diagnostic"
+
+text_sensor:
+  - platform: template
+    name: "Radar Movement Class"
+    id: radar_movement_class
+  - platform: template
+    name: "Radar Device ID"
+    id: radar_device_id
+    entity_category: "diagnostic"
+  - platform: template
+    name: "Radar Software Version"
+    id: radar_software_version
+    entity_category: "diagnostic"
+  - platform: template
+    name: "Radar Scene Mode"
+    id: radar_scene_mode
+    entity_category: "diagnostic"
+
+seeed_mr24hpb1:
+  id: mr24hpb1
+  uart_id: uart_id
