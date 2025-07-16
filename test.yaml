@@ -1,8 +1,9 @@
 ---
 esphome:
   name: test
-  platform: ESP32
-  board: esp32dev
+
+esp32:
+  board: esp32-s3-devkitc-1
 
 wifi:
   ssid: wifi_ssid
