@@ -1,6 +1,9 @@
 ---
 esphome:
   name: test
+  platformio_options:
+    extra_scripts: 
+      - post:../../../export_compdb.py
 
 esp32:
   board: esp32-s3-devkitc-1
