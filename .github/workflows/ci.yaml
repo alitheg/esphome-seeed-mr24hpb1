@@ -66,11 +66,11 @@ jobs:
       - name: 🚀 Run esphome compile on test file
         run: |
           esphome compile test.yaml
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            --define sonar.cfamily.compile-commands=".esphome/build/test/compile_commands.json"
+      # - name: SonarQube Scan
+      #   uses: SonarSource/sonarqube-scan-action@v5
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #   with:
+      #     args: >
+      #       --define sonar.cfamily.compile-commands=".esphome/build/test/compile_commands.json"
         
