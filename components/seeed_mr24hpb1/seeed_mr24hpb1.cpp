@@ -151,7 +151,7 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
   } else if (addr1 == 0x04 && addr2 == 0x10 && len >= 8) {
     uint8_t mode = bytes[6];
     if (scene_select_) {
-      auto opts = scene_select_->traits.get_options();
+      const auto &opts = scene_select_->traits.get_options();
       if (mode < opts.size()) scene_select_->publish_state(opts[mode]);
     }
 

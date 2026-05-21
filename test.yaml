@@ -2,7 +2,7 @@
 esphome:
   name: test
   platformio_options:
-    extra_scripts: 
+    extra_scripts:
       - post:../../../export_compdb.py
 
 esp32:
@@ -26,59 +26,15 @@ uart:
   parity: NONE
   stop_bits: 1
   data_bits: 8
-    
-binary_sensor:
-  - platform: template
-    name: "Radar Presence"
-    id: radar_presence
-    device_class: occupancy
-  - platform: template
-    name: "Radar Motion"
-    id: radar_motion
-    device_class: motion
-
-sensor:
-  - platform: template
-    name: "Radar Movement Percentage"
-    id: radar_movement_pct
-    unit_of_measurement: "%"
-    accuracy_decimals: 1
-  - platform: template
-    name: "Radar Threshold Gear"
-    id: radar_threshold_gear
-    accuracy_decimals: 0
-    entity_category: "diagnostic"
-
-text_sensor:
-  - platform: template
-    name: "Radar Movement Class"
-    id: radar_movement_class
-  - platform: template
-    name: "Radar Device ID"
-    id: radar_device_id
-    entity_category: "diagnostic"
-  - platform: template
-    name: "Radar Software Version"
-    id: radar_software_version
-    entity_category: "diagnostic"
-  - platform: template
-    name: "Radar Hardware Version"
-    id: radar_hardware_version
-    entity_category: "diagnostic"
-  - platform: template
-    name: "Radar Scene Mode"
-    id: radar_scene_mode
-    entity_category: "diagnostic"
 
 seeed_mr24hpb1:
   id: mr24hpb1
   uart_id: uart_id
-  presence_sensor: radar_presence
-  motion_sensor: radar_motion
-  movement_pct_sensor: radar_movement_pct
-  threshold_gear_sensor: radar_threshold_gear
-  movement_class_sensor: radar_movement_class
-  device_id_sensor: radar_device_id
-  software_version_sensor: radar_software_version
-  hardware_version_sensor: radar_hardware_version
-  scene_mode_sensor: radar_scene_mode
+  update_interval: 60s
+
+binary_sensor:
+  - platform: seeed_mr24hpb1
+    presence:
+      name: "Radar Presence"
+    motion:
+      name: "Radar Motion"
