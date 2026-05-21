@@ -19,12 +19,12 @@ Add the following to your ESPHome configuration:
 
 ```yaml
 external_components:
-  - source: github://alitheg/esphome-seeed-mr24hpb1@v1.0.0
+  - source: github://alitheg/esphome-seeed-mr24hpb1@v1.0.1
 ```
 
 ## Configuration
 
-Example configuration:
+Example configuration. All sensors are optional - wire up only the ones you want exposed:
 
 ```yaml
 uart:
@@ -71,6 +71,10 @@ text_sensor:
     id: radar_software_version
     entity_category: "diagnostic"
   - platform: template
+    name: "Radar Hardware Version"
+    id: radar_hardware_version
+    entity_category: "diagnostic"
+  - platform: template
     name: "Radar Scene Mode"
     id: radar_scene_mode
     entity_category: "diagnostic"
@@ -78,6 +82,15 @@ text_sensor:
 seeed_mr24hpb1:
   id: mr24hpb1
   uart_id: uart_id
+  presence_sensor: radar_presence
+  motion_sensor: radar_motion
+  movement_pct_sensor: radar_movement_pct
+  threshold_gear_sensor: radar_threshold_gear
+  movement_class_sensor: radar_movement_class
+  device_id_sensor: radar_device_id
+  software_version_sensor: radar_software_version
+  hardware_version_sensor: radar_hardware_version
+  scene_mode_sensor: radar_scene_mode
 ```
 
 ## Available Sensors
@@ -92,9 +105,10 @@ seeed_mr24hpb1:
 
 ### Text Sensors
 - **Movement Class**: Classification of detected movement (unoccupied, resting, micro-movement, walking, running)
-- **Device ID**: Hardware identifier of the radar module
+- **Device ID**: Hardware identifier of the radar module (reads "unset" if the module has none programmed)
 - **Software Version**: Firmware version of the radar module
-- **Scene Mode**: Current scene setting (Default, Bathroom, Bedroom, Living Room, Office, Hotel)
+- **Hardware Version**: Hardware revision of the radar module
+- **Scene Mode**: Current scene setting (Default, Area Detection, Bathroom, Bedroom, Living Room, Office, Hotel)
 
 ## Hardware Setup
 
