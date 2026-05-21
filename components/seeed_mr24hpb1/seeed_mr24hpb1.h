@@ -28,7 +28,9 @@ class MR24HPB1 : public Component, public uart::UARTDevice {
   void set_device_id_sensor(text_sensor::TextSensor *sensor);
   
   void set_software_version_sensor(text_sensor::TextSensor *sensor);
-  
+
+  void set_hardware_version_sensor(text_sensor::TextSensor *sensor);
+
   void set_scene_mode_sensor(text_sensor::TextSensor *sensor);
   
   void send_scene_query();
@@ -48,6 +50,7 @@ class MR24HPB1 : public Component, public uart::UARTDevice {
   text_sensor::TextSensor *movement_class_sensor_{nullptr};
   text_sensor::TextSensor *device_id_sensor_{nullptr};
   text_sensor::TextSensor *software_version_sensor_{nullptr};
+  text_sensor::TextSensor *hardware_version_sensor_{nullptr};
   text_sensor::TextSensor *scene_mode_sensor_{nullptr};
   uint16_t expected_length_{0};
   void send_command(uint8_t fn, uint8_t addr1, uint8_t addr2);

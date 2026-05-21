@@ -62,6 +62,10 @@ text_sensor:
     id: radar_software_version
     entity_category: "diagnostic"
   - platform: template
+    name: "Radar Hardware Version"
+    id: radar_hardware_version
+    entity_category: "diagnostic"
+  - platform: template
     name: "Radar Scene Mode"
     id: radar_scene_mode
     entity_category: "diagnostic"
@@ -76,4 +80,5 @@ seeed_mr24hpb1:
   movement_class_sensor: radar_movement_class
   device_id_sensor: radar_device_id
   software_version_sensor: radar_software_version
+  hardware_version_sensor: radar_hardware_version
   scene_mode_sensor: radar_scene_mode

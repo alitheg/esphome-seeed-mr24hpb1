@@ -51,6 +51,11 @@ void MR24HPB1::set_software_version_sensor(text_sensor::TextSensor *sensor) {
   this->software_version_sensor_ = sensor;
 }
 
+void MR24HPB1::set_hardware_version_sensor(text_sensor::TextSensor *sensor) {
+  ESP_LOGI(TAG, "set_hardware_version_sensor called");
+  this->hardware_version_sensor_ = sensor;
+}
+
 void MR24HPB1::set_scene_mode_sensor(text_sensor::TextSensor *sensor) {
   ESP_LOGI(TAG, "set_scene_mode_sensor called");
   this->scene_mode_sensor_ = sensor;
@@ -182,10 +187,19 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
 
   } else if (addr1 == 0x01 && addr2 == 0x01 && len >= 19) {
     std::string idstr;
+    bool has_printable = false;
     for (size_t i = 6; i < len - 2; i++) {
       char c = static_cast<char>(bytes[i]);
-      idstr += (c >= 32 && c <= 126) ? c : '.';  // dot for non-printable
+      if (c >= 32 && c <= 126) {
+        idstr += c;
+        has_printable = true;
+      } else {
+        idstr += '.';  // dot for non-printable
+      }
     }
+    // A module with no ID programmed reports all 0xFF - show that as "unset"
+    // rather than a row of dots.
+    if (!has_printable) idstr = "unset";
     ESP_LOGI(TAG, "Device ID: %s", idstr.c_str());
 
     if (device_id_sensor_) device_id_sensor_->publish_state(idstr);
@@ -201,6 +215,17 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
 
     if (software_version_sensor_) software_version_sensor_->publish_state(ver);
     else ESP_LOGW(TAG, "software_version_sensor_ not set — cannot publish software version");
+
+  } else if (addr1 == 0x01 && addr2 == 0x03 && len >= 8) {
+    std::string ver;
+    for (size_t i = 6; i < len - 2; i++) {
+      if (bytes[i] != 0 && bytes[i] != 0xFF)
+        ver += static_cast<char>(bytes[i]);
+    }
+    ESP_LOGI(TAG, "Hardware Version: %s", ver.c_str());
+
+    if (hardware_version_sensor_) hardware_version_sensor_->publish_state(ver);
+    else ESP_LOGW(TAG, "hardware_version_sensor_ not set — cannot publish hardware version");
 
   } else if (addr1 == 0x04 && addr2 == 0x0C && len >= 8) {
     uint8_t gear = bytes[6];
