@@ -81,8 +81,11 @@ void MR24HPB1::loop() {
 
     // Once we have enough to determine length
     if (buffer_.size() == 3) {
+      // Length field covers everything except the 0x55 header (see protocol manual
+      // 8.1.2: Length = DataLength + Function + Addr1 + Addr2 + Data + Checksum), so
+      // the full frame on the wire is that value plus the one header byte.
       expected_length_ = static_cast<size_t>(buffer_[1]) +
-                         (static_cast<size_t>(buffer_[2]) << 8) + 3;  // len includes itself
+                         (static_cast<size_t>(buffer_[2]) << 8) + 1;
       if (expected_length_ > 256) {
         ESP_LOGW(TAG, "Payload length too large (%d) — discarding", expected_length_);
         buffer_.clear();
@@ -144,8 +147,11 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
   ESP_LOGD(TAG, "Raw frame: %s", hex.c_str());
 
   if (addr1 == 0x03 && addr2 == 0x05 && len >= 10) {
-    uint8_t presence = bytes[6];
-    uint8_t motion = bytes[7];
+    // Environmental status data (manual 7.2): byte 0 is presence (0x01 = occupied),
+    // byte 1 is the motion state. 0x01 means moving, 0x00 still, 0xFF not-applicable
+    // (sent while unoccupied) - so only treat an explicit 0x01 as motion.
+    bool presence = bytes[6] == 0x01;
+    bool motion = bytes[7] == 0x01;
     ESP_LOGI(TAG, "Presence: %s, Motion: %s", presence ? "PRESENT" : "ABSENT", motion ? "MOVING" : "STILL");
 
     if (presence_sensor_) presence_sensor_->publish_state(presence);
@@ -206,13 +212,16 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
   } else if (addr1 == 0x04 && addr2 == 0x10 && len >= 8) {
     uint8_t mode = bytes[6];
     const char *scene = "Unknown";
+    // Scene values per protocol manual 7.2. 0x01 (Area detection) was previously
+    // missing, which shifted every label below it by one and dropped Hotel.
     switch (mode) {
       case 0x00: scene = "Default"; break;
-      case 0x01: scene = "Bathroom"; break;
-      case 0x02: scene = "Bedroom"; break;
-      case 0x03: scene = "Living Room"; break;
-      case 0x04: scene = "Office"; break;
-      case 0x05: scene = "Hotel"; break;
+      case 0x01: scene = "Area Detection"; break;
+      case 0x02: scene = "Bathroom"; break;
+      case 0x03: scene = "Bedroom"; break;
+      case 0x04: scene = "Living Room"; break;
+      case 0x05: scene = "Office"; break;
+      case 0x06: scene = "Hotel"; break;
     }
     ESP_LOGI(TAG, "Scene mode: %s (0x%02X)", scene, mode);
 
