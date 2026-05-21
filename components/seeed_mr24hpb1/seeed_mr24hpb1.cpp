@@ -1,98 +1,59 @@
 #include "esphome/core/log.h"
 #include "seeed_mr24hpb1.h"
+#include <cmath>
 
 namespace esphome {
 namespace seeed_mr24hpb1 {
 
-static const char *const TAG = "seeed_mr24hpb1.sensor";
+static const char *const TAG = "seeed_mr24hpb1";
 
 void MR24HPB1::setup() {
-  ESP_LOGI("seeed_mr24hpb1", "Setup started");
-  if (this->movement_class_sensor_ != nullptr) {
-    ESP_LOGI("seeed_mr24hpb1", "Movement class sensor connected");
-  } else {
-    ESP_LOGW("seeed_mr24hpb1", "Movement class sensor is NULL");
+  ESP_LOGI(TAG, "Setup started");
+  this->buffer_.clear();
+  // Populate versions / device id / scene / sensitivity shortly after boot
+  // instead of waiting a full update_interval.
+  this->set_timeout(3000, [this]() { this->update(); });
+}
+
+void MR24HPB1::update() {
+  // Stagger queries so the module is not flooded in one tick.
+  uint32_t delay = 0;
+  this->set_timeout(delay, [this]() { this->send_scene_query(); });
+  delay += 200;
+  this->set_timeout(delay, [this]() { this->send_threshold_gear_query(); });
+  delay += 200;
+  if (!this->got_software_version_) {
+    this->set_timeout(delay, [this]() { this->send_software_version_query(); });
+    delay += 200;
   }
-  buffer_.clear();
-}
-
-void MR24HPB1::set_presence_sensor(binary_sensor::BinarySensor *sensor) {
-  ESP_LOGI(TAG, "set_presence_sensor called");
-  this->presence_sensor_ = sensor;
-}
-
-void MR24HPB1::set_motion_sensor(binary_sensor::BinarySensor *sensor) {
-  ESP_LOGI(TAG, "set_motion_sensor called");
-  this->motion_sensor_ = sensor;
-}
-
-void MR24HPB1::set_movement_pct_sensor(sensor::Sensor *sensor) {
-  ESP_LOGI(TAG, "set_movement_pct_sensor called");
-  this->movement_pct_sensor_ = sensor;
-}
-
-void MR24HPB1::set_threshold_gear_sensor(sensor::Sensor *sensor) {
-  ESP_LOGI(TAG, "set_threshold_gear_sensor called");
-  this->threshold_gear_sensor_ = sensor;
-}
-
-void MR24HPB1::set_movement_class_sensor(text_sensor::TextSensor *sensor) {
-  ESP_LOGI(TAG, "set_movement_class_sensor called");
-  this->movement_class_sensor_ = sensor;
-}
-
-void MR24HPB1::set_device_id_sensor(text_sensor::TextSensor *sensor) {
-  ESP_LOGI(TAG, "set_device_id_sensor called");
-  this->device_id_sensor_ = sensor;
-}
-
-void MR24HPB1::set_software_version_sensor(text_sensor::TextSensor *sensor) {
-  ESP_LOGI(TAG, "set_software_version_sensor called");
-  this->software_version_sensor_ = sensor;
-}
-
-void MR24HPB1::set_hardware_version_sensor(text_sensor::TextSensor *sensor) {
-  ESP_LOGI(TAG, "set_hardware_version_sensor called");
-  this->hardware_version_sensor_ = sensor;
-}
-
-void MR24HPB1::set_scene_mode_sensor(text_sensor::TextSensor *sensor) {
-  ESP_LOGI(TAG, "set_scene_mode_sensor called");
-  this->scene_mode_sensor_ = sensor;
+  if (!this->got_hardware_version_) {
+    this->set_timeout(delay, [this]() { this->send_hardware_version_query(); });
+    delay += 200;
+  }
+  if (!this->got_device_id_) {
+    this->set_timeout(delay, [this]() { this->send_device_id_query(); });
+  }
 }
 
 void MR24HPB1::loop() {
-  static bool logged = false;
   static int overrun_count = 0;
-
-  if (!logged) {
-    ESP_LOGI(TAG, "Presence: %s", presence_sensor_ ? "OK" : "MISSING");
-    ESP_LOGI(TAG, "Motion: %s", motion_sensor_ ? "OK" : "MISSING");
-    ESP_LOGI(TAG, "Movement class: %s", movement_class_sensor_ ? "OK" : "MISSING");
-    logged = true;
-  }
 
   while (available()) {
     uint8_t byte;
     read_byte(&byte);
 
-    // Wait for frame start
-    if (buffer_.empty() && byte != 0x55) {
-      // ESP_LOGV(TAG, "Ignoring byte 0x%02X — not frame start", byte);
+    if (buffer_.empty() && byte != 0x55)
       continue;
-    }
 
     buffer_.push_back(byte);
 
-    // Once we have enough to determine length
     if (buffer_.size() == 3) {
-      // Length field covers everything except the 0x55 header (see protocol manual
-      // 8.1.2: Length = DataLength + Function + Addr1 + Addr2 + Data + Checksum), so
-      // the full frame on the wire is that value plus the one header byte.
+      // Length field covers everything except the 0x55 header (manual 8.1.2),
+      // so the full frame is that value plus the one header byte.
       expected_length_ = static_cast<size_t>(buffer_[1]) +
                          (static_cast<size_t>(buffer_[2]) << 8) + 1;
       if (expected_length_ > 256) {
-        ESP_LOGW(TAG, "Payload length too large (%d) — discarding", expected_length_);
+        ESP_LOGW(TAG, "Payload length too large (%d) - discarding", expected_length_);
         buffer_.clear();
         expected_length_ = 0;
         continue;
@@ -100,31 +61,24 @@ void MR24HPB1::loop() {
       ESP_LOGD(TAG, "Expecting frame of length %d", expected_length_);
     }
 
-    // If we have the expected frame length
     if (expected_length_ > 0 && buffer_.size() >= expected_length_) {
       std::vector<uint8_t> frame(buffer_.begin(), buffer_.begin() + expected_length_);
       parse_frame_(frame);
       buffer_.erase(buffer_.begin(), buffer_.begin() + expected_length_);
       expected_length_ = 0;
-      overrun_count = 0;  // Reset on successful parse
+      overrun_count = 0;
     }
 
-    // Safety: prevent runaway growth & try to resync
     if (buffer_.size() > 128) {
-      ESP_LOGW(TAG, "Buffer overrun (%d bytes) — attempting resync", buffer_.size());
+      ESP_LOGW(TAG, "Buffer overrun (%d bytes) - attempting resync", buffer_.size());
       auto it = std::find(buffer_.begin() + 1, buffer_.end(), 0x55);
       if (it != buffer_.end()) {
-        ESP_LOGD(TAG, "Found new frame start at offset %d", std::distance(buffer_.begin(), it));
         buffer_.erase(buffer_.begin(), it);
       } else {
-        ESP_LOGW(TAG, "No valid start found — clearing buffer");
         buffer_.clear();
       }
       expected_length_ = 0;
-
-      overrun_count++;
-      if (overrun_count >= 5) {
-        ESP_LOGW(TAG, "Too many overruns — clearing buffer fully");
+      if (++overrun_count >= 5) {
         buffer_.clear();
         overrun_count = 0;
       }
@@ -143,115 +97,63 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
   uint8_t fn = bytes[3];
   uint8_t addr1 = bytes[4];
   uint8_t addr2 = bytes[5];
-
   ESP_LOGD(TAG, "Parsing frame: fn=0x%02X addr1=0x%02X addr2=0x%02X (len=%d)", fn, addr1, addr2, len);
 
-  std::string hex;
-  for (auto b : bytes)
-    hex += (hex.empty() ? "" : " ") + esphome::format_hex(b);
-  ESP_LOGD(TAG, "Raw frame: %s", hex.c_str());
-
   if (addr1 == 0x03 && addr2 == 0x05 && len >= 10) {
-    // Environmental status data (manual 7.2): byte 0 is presence (0x01 = occupied),
-    // byte 1 is the motion state. 0x01 means moving, 0x00 still, 0xFF not-applicable
-    // (sent while unoccupied) - so only treat an explicit 0x01 as motion.
     bool presence = bytes[6] == 0x01;
     bool motion = bytes[7] == 0x01;
-    ESP_LOGI(TAG, "Presence: %s, Motion: %s", presence ? "PRESENT" : "ABSENT", motion ? "MOVING" : "STILL");
-
-    if (presence_sensor_) presence_sensor_->publish_state(presence);
-    else ESP_LOGW(TAG, "presence_sensor_ not set — cannot publish presence");
-
-    if (motion_sensor_) motion_sensor_->publish_state(motion);
-    else ESP_LOGW(TAG, "motion_sensor_ not set — cannot publish motion");
+    if (presence_binary_sensor_) presence_binary_sensor_->publish_state(presence);
+    if (motion_binary_sensor_) motion_binary_sensor_->publish_state(motion);
 
   } else if (addr1 == 0x03 && addr2 == 0x06 && len >= 11) {
     union { uint8_t b[4]; float f; } val;
     for (int i = 0; i < 4; i++) val.b[i] = bytes[6 + i];
     float pct = val.f;
-
     const char *cls = "unknown";
     if (pct < 1.0f) cls = "unoccupied";
     else if (pct < 2.0f) cls = "resting";
     else if (pct <= 30.0f) cls = "micro-movement";
     else if (pct <= 60.0f) cls = "walking";
     else cls = "running";
-
-    ESP_LOGI(TAG, "Movement: %.1f%% → Class: %s", pct, cls);
-
     if (movement_pct_sensor_) movement_pct_sensor_->publish_state(pct);
-    else ESP_LOGW(TAG, "movement_pct_sensor_ not set — cannot publish movement %%");
-
-    if (movement_class_sensor_) movement_class_sensor_->publish_state(cls);
-    else ESP_LOGW(TAG, "movement_class_sensor_ not set — cannot publish movement class");
+    if (movement_class_text_sensor_) movement_class_text_sensor_->publish_state(cls);
 
   } else if (addr1 == 0x01 && addr2 == 0x01 && len >= 19) {
     std::string idstr;
     bool has_printable = false;
     for (size_t i = 6; i < len - 2; i++) {
       char c = static_cast<char>(bytes[i]);
-      if (c >= 32 && c <= 126) {
-        idstr += c;
-        has_printable = true;
-      } else {
-        idstr += '.';  // dot for non-printable
-      }
+      if (c >= 32 && c <= 126) { idstr += c; has_printable = true; }
+      else idstr += '.';
     }
-    // A module with no ID programmed reports all 0xFF - show that as "unset"
-    // rather than a row of dots.
     if (!has_printable) idstr = "unset";
-    ESP_LOGI(TAG, "Device ID: %s", idstr.c_str());
-
-    if (device_id_sensor_) device_id_sensor_->publish_state(idstr);
-    else ESP_LOGW(TAG, "device_id_sensor_ not set — cannot publish device ID");
+    got_device_id_ = true;
+    if (device_id_text_sensor_) device_id_text_sensor_->publish_state(idstr);
 
   } else if (addr1 == 0x01 && addr2 == 0x02 && len >= 22) {
     std::string ver;
-    for (size_t i = 6; i < len - 2; i++) {
-      if (bytes[i] != 0 && bytes[i] != 0xFF)
-        ver += static_cast<char>(bytes[i]);
-    }
-    ESP_LOGI(TAG, "Software Version: %s", ver.c_str());
-
-    if (software_version_sensor_) software_version_sensor_->publish_state(ver);
-    else ESP_LOGW(TAG, "software_version_sensor_ not set — cannot publish software version");
+    for (size_t i = 6; i < len - 2; i++)
+      if (bytes[i] != 0 && bytes[i] != 0xFF) ver += static_cast<char>(bytes[i]);
+    got_software_version_ = true;
+    if (software_version_text_sensor_) software_version_text_sensor_->publish_state(ver);
 
   } else if (addr1 == 0x01 && addr2 == 0x03 && len >= 8) {
     std::string ver;
-    for (size_t i = 6; i < len - 2; i++) {
-      if (bytes[i] != 0 && bytes[i] != 0xFF)
-        ver += static_cast<char>(bytes[i]);
-    }
-    ESP_LOGI(TAG, "Hardware Version: %s", ver.c_str());
-
-    if (hardware_version_sensor_) hardware_version_sensor_->publish_state(ver);
-    else ESP_LOGW(TAG, "hardware_version_sensor_ not set — cannot publish hardware version");
+    for (size_t i = 6; i < len - 2; i++)
+      if (bytes[i] != 0 && bytes[i] != 0xFF) ver += static_cast<char>(bytes[i]);
+    got_hardware_version_ = true;
+    if (hardware_version_text_sensor_) hardware_version_text_sensor_->publish_state(ver);
 
   } else if (addr1 == 0x04 && addr2 == 0x0C && len >= 8) {
     uint8_t gear = bytes[6];
-    ESP_LOGI(TAG, "Threshold gear: %d", gear);
-
-    if (threshold_gear_sensor_) threshold_gear_sensor_->publish_state(gear);
-    else ESP_LOGW(TAG, "threshold_gear_sensor_ not set — cannot publish gear value");
+    if (sensitivity_number_) sensitivity_number_->publish_state(static_cast<float>(gear));
 
   } else if (addr1 == 0x04 && addr2 == 0x10 && len >= 8) {
     uint8_t mode = bytes[6];
-    const char *scene = "Unknown";
-    // Scene values per protocol manual 7.2. 0x01 (Area detection) was previously
-    // missing, which shifted every label below it by one and dropped Hotel.
-    switch (mode) {
-      case 0x00: scene = "Default"; break;
-      case 0x01: scene = "Area Detection"; break;
-      case 0x02: scene = "Bathroom"; break;
-      case 0x03: scene = "Bedroom"; break;
-      case 0x04: scene = "Living Room"; break;
-      case 0x05: scene = "Office"; break;
-      case 0x06: scene = "Hotel"; break;
+    if (scene_select_) {
+      auto opts = scene_select_->traits.get_options();
+      if (mode < opts.size()) scene_select_->publish_state(opts[mode]);
     }
-    ESP_LOGI(TAG, "Scene mode: %s (0x%02X)", scene, mode);
-
-    if (scene_mode_sensor_) scene_mode_sensor_->publish_state(scene);
-    else ESP_LOGW(TAG, "scene_mode_sensor_ not set — cannot publish scene mode");
 
   } else {
     ESP_LOGW(TAG, "Unhandled frame fn=0x%02X addr1=0x%02X addr2=0x%02X (len=%d)", fn, addr1, addr2, len);
@@ -259,69 +161,58 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
 }
 
 void MR24HPB1::send_command(uint8_t fn, uint8_t addr1, uint8_t addr2) {
-  std::vector<uint8_t> empty_data;
-  send_command(fn, addr1, addr2, empty_data);
+  std::vector<uint8_t> empty;
+  send_command(fn, addr1, addr2, empty);
 }
+
 void MR24HPB1::send_command(uint8_t fn, uint8_t addr1, uint8_t addr2, const std::vector<uint8_t> &data) {
   std::vector<uint8_t> frame;
-  frame.push_back(0x55);  // Start byte
-  
-  uint16_t length = 7 + data.size();  // includes itself
-  frame.push_back(length & 0xFF);     // Length_L
-  frame.push_back((length >> 8) & 0xFF); // Length_H
-  
-  frame.push_back(fn);     // Function code
-  frame.push_back(addr1);  // Address 1
-  frame.push_back(addr2);  // Address 2
-  
-  frame.insert(frame.end(), data.begin(), data.end());  // Payload
-  
-  uint16_t crc = crc16(frame.data(), frame.size());     // CRC over everything so far
+  frame.push_back(0x55);
+  uint16_t length = 7 + data.size();
+  frame.push_back(length & 0xFF);
+  frame.push_back((length >> 8) & 0xFF);
+  frame.push_back(fn);
+  frame.push_back(addr1);
+  frame.push_back(addr2);
+  frame.insert(frame.end(), data.begin(), data.end());
+  uint16_t crc = crc16(frame.data(), frame.size());
   frame.push_back(crc & 0xFF);
   frame.push_back((crc >> 8) & 0xFF);
-
-  ESP_LOGD(TAG, "Sending frame: fn=0x%02X addr1=0x%02X addr2=0x%02X data_len=%d crc=0x%04X", fn, addr1, addr2, (int)data.size(), crc);
+  ESP_LOGD(TAG, "Sending frame: fn=0x%02X addr1=0x%02X addr2=0x%02X data_len=%d crc=0x%04X",
+           fn, addr1, addr2, (int) data.size(), crc);
   this->write_array(frame);
 }
 
-// Call this from YAML via custom action or lambda
-void MR24HPB1::send_software_version_query() {
-  ESP_LOGI(TAG, "Sending Software Version Query...");
-  this->send_command(0x01, 0x01, 0x02);  // Read function, System Param Inquiry, Software Version
-}
-void MR24HPB1::send_device_id_query() {
-  ESP_LOGI(TAG, "Sending Device ID Query...");
-  this->send_command(0x01, 0x01, 0x01);  // Read function, System Param Inquiry, Device ID
-}
-void MR24HPB1::send_hardware_version_query() {
-  ESP_LOGI(TAG, "Sending Hardware Version Query...");
-  this->send_command(0x01, 0x01, 0x03);  // Read function, System Param Inquiry, Hardware Version
-}
-void MR24HPB1::send_scene_query() {
-  ESP_LOGI(TAG, "Sending Scene Mode Query...");
-  this->send_command(0x01, 0x04, 0x10);  // Read function, System Param Inquiry, Scene Mode
+void MR24HPB1::write_scene_mode(uint8_t mode) {
+  ESP_LOGI(TAG, "Writing scene mode %d", mode);
+  this->send_command(0x02, 0x04, 0x10, {mode});
 }
 
-void MR24HPB1::send_threshold_gear_query() {
-  ESP_LOGI(TAG, "Sending Threshold Gear Query...");
-  this->send_command(0x01, 0x04, 0x0C);  // Read function, System Param Inquiry, Threshold Gear
+void MR24HPB1::write_sensitivity(uint8_t gear) {
+  ESP_LOGI(TAG, "Writing sensitivity %d", gear);
+  this->send_command(0x02, 0x04, 0x0C, {gear});
 }
 
-// CRC16-IBM (modbus) implementation (polynomial 0x8005, initial 0xFFFF)
+void MR24HPB1::reboot() {
+  ESP_LOGI(TAG, "Rebooting radar");
+  this->send_command(0x02, 0x05, 0x04);
+}
+
+void MR24HPB1::send_software_version_query() { this->send_command(0x01, 0x01, 0x02); }
+void MR24HPB1::send_hardware_version_query() { this->send_command(0x01, 0x01, 0x03); }
+void MR24HPB1::send_device_id_query() { this->send_command(0x01, 0x01, 0x01); }
+void MR24HPB1::send_scene_query() { this->send_command(0x01, 0x04, 0x10); }
+void MR24HPB1::send_threshold_gear_query() { this->send_command(0x01, 0x04, 0x0C); }
+
 uint16_t MR24HPB1::crc16(const uint8_t *data, size_t length) {
   uint16_t crc = 0xFFFF;
   for (size_t i = 0; i < length; i++) {
     crc ^= data[i];
-    for (uint8_t j = 0; j < 8; j++) {
-      if (crc & 0x0001)
-        crc = (crc >> 1) ^ 0xA001;
-      else
-        crc = crc >> 1;
-    }
+    for (uint8_t j = 0; j < 8; j++)
+      crc = (crc & 0x0001) ? (crc >> 1) ^ 0xA001 : (crc >> 1);
   }
   return crc;
 }
-
 
 void MR24HPB1::dump_config() {
   ESP_LOGCONFIG(TAG, "Seeed MR24HPB1 UART mmWave radar");
