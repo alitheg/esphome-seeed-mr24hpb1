@@ -67,3 +67,8 @@ number:
   - platform: seeed_mr24hpb1
     sensitivity:
       name: "Radar Sensitivity"
+
+button:
+  - platform: seeed_mr24hpb1
+    reboot:
+      name: "Radar Reboot"
