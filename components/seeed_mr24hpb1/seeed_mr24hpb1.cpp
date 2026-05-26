@@ -56,7 +56,7 @@ void MR24HPB1::loop() {
         expected_length_ = 0;
         continue;
       }
-      ESP_LOGD(TAG, "Expecting frame of length %d", expected_length_);
+      ESP_LOGV(TAG, "Expecting frame of length %d", expected_length_);
     }
 
     if (expected_length_ > 0 && buffer_.size() >= expected_length_) {
@@ -95,7 +95,7 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
   uint8_t fn = bytes[3];
   uint8_t addr1 = bytes[4];
   uint8_t addr2 = bytes[5];
-  ESP_LOGD(TAG, "Parsing frame: fn=0x%02X addr1=0x%02X addr2=0x%02X (len=%d)", fn, addr1, addr2, len);
+  ESP_LOGV(TAG, "Parsing frame: fn=0x%02X addr1=0x%02X addr2=0x%02X (len=%d)", fn, addr1, addr2, len);
 
   if (addr1 == 0x03 && addr2 == 0x05 && len >= 10) {
     bool presence = bytes[6] == 0x01;
@@ -152,6 +152,11 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
       const auto &opts = scene_select_->traits.get_options();
       if (mode < opts.size()) scene_select_->publish_state(opts[mode]);
     }
+
+  } else if (addr1 == 0x05 && addr2 == 0x01) {
+    // Heartbeat (active report 0x04/0x05/0x01). Periodic, expected, nothing to
+    // do with it - swallow silently so it doesn't show as "Unhandled".
+    ESP_LOGV(TAG, "Heartbeat frame received");
 
   } else {
     ESP_LOGW(TAG, "Unhandled frame fn=0x%02X addr1=0x%02X addr2=0x%02X (len=%d)", fn, addr1, addr2, len);
