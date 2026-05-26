@@ -9,6 +9,8 @@ DEPENDENCIES = ["seeed_mr24hpb1"]
 SceneSelect = seeed_mr24hpb1_ns.class_("SceneSelect", select.Select)
 
 CONF_SCENE_MODE = "scene_mode"
+# Options must stay in protocol-byte order: list index equals the byte value
+# written to the device (see manual 7.2 Scene setup 0x10). Do not reorder.
 SCENE_OPTIONS = [
     "Default",
     "Area Detection",

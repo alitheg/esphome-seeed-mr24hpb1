@@ -21,4 +21,6 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     if CONF_REBOOT in config:
         btn = await button.new_button(config[CONF_REBOOT])
+        # Reboot is one-way - the button calls parent_->reboot() and there is no
+        # state to publish back, so the hub does not need a back-pointer to it.
         await cg.register_parented(btn, config[CONF_SEEED_MR24HPB1_ID])
