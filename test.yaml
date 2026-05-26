@@ -38,3 +38,8 @@ binary_sensor:
       name: "Radar Presence"
     motion:
       name: "Radar Motion"
+
+sensor:
+  - platform: seeed_mr24hpb1
+    movement_pct:
+      name: "Radar Movement Percentage"
