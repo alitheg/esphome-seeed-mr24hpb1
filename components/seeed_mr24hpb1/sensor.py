@@ -1,6 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor
+from esphome.const import STATE_CLASS_MEASUREMENT
 
 from . import MR24HPB1, CONF_SEEED_MR24HPB1_ID
 
@@ -14,6 +15,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_MOVEMENT_PCT): sensor.sensor_schema(
             unit_of_measurement="%",
             accuracy_decimals=1,
+            state_class=STATE_CLASS_MEASUREMENT,
         ),
     }
 )
