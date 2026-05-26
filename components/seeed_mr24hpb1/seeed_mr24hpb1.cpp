@@ -36,8 +36,6 @@ void MR24HPB1::update() {
 }
 
 void MR24HPB1::loop() {
-  static int overrun_count = 0;
-
   while (available()) {
     uint8_t byte;
     read_byte(&byte);
@@ -66,7 +64,7 @@ void MR24HPB1::loop() {
       parse_frame_(frame);
       buffer_.erase(buffer_.begin(), buffer_.begin() + expected_length_);
       expected_length_ = 0;
-      overrun_count = 0;
+      overrun_count_ = 0;
     }
 
     if (buffer_.size() > 128) {
@@ -78,9 +76,9 @@ void MR24HPB1::loop() {
         buffer_.clear();
       }
       expected_length_ = 0;
-      if (++overrun_count >= 5) {
+      if (++overrun_count_ >= 5) {
         buffer_.clear();
-        overrun_count = 0;
+        overrun_count_ = 0;
       }
     }
   }

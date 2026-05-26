@@ -10,6 +10,7 @@
 #include "esphome/components/number/number.h"
 #include "esphome/components/button/button.h"
 
+#include <cmath>
 #include <vector>
 
 namespace esphome {
@@ -55,6 +56,7 @@ class MR24HPB1 : public PollingComponent, public uart::UARTDevice {
 
   std::vector<uint8_t> buffer_;
   uint16_t expected_length_{0};
+  int overrun_count_{0};
 
   binary_sensor::BinarySensor *presence_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *motion_binary_sensor_{nullptr};
