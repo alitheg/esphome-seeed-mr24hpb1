@@ -62,3 +62,8 @@ select:
   - platform: seeed_mr24hpb1
     scene_mode:
       name: "Radar Scene Mode"
+
+number:
+  - platform: seeed_mr24hpb1
+    sensitivity:
+      name: "Radar Sensitivity"
