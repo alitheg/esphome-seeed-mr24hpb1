@@ -43,3 +43,17 @@ sensor:
   - platform: seeed_mr24hpb1
     movement_pct:
       name: "Radar Movement Percentage"
+
+text_sensor:
+  - platform: seeed_mr24hpb1
+    movement_class:
+      name: "Radar Movement Class"
+    device_id:
+      name: "Radar Device ID"
+      entity_category: "diagnostic"
+    software_version:
+      name: "Radar Software Version"
+      entity_category: "diagnostic"
+    hardware_version:
+      name: "Radar Hardware Version"
+      entity_category: "diagnostic"
