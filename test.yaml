@@ -57,3 +57,8 @@ text_sensor:
     hardware_version:
       name: "Radar Hardware Version"
       entity_category: "diagnostic"
+
+select:
+  - platform: seeed_mr24hpb1
+    scene_mode:
+      name: "Radar Scene Mode"
