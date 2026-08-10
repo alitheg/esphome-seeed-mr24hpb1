@@ -8,6 +8,7 @@ from . import MR24HPB1, CONF_SEEED_MR24HPB1_ID
 DEPENDENCIES = ["seeed_mr24hpb1"]
 
 CONF_MOVEMENT_CLASS = "movement_class"
+CONF_MOVEMENT_DIRECTION = "movement_direction"
 CONF_SOFTWARE_VERSION = "software_version"
 CONF_HARDWARE_VERSION = "hardware_version"
 
@@ -15,6 +16,7 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_SEEED_MR24HPB1_ID): cv.use_id(MR24HPB1),
         cv.Optional(CONF_MOVEMENT_CLASS): text_sensor.text_sensor_schema(),
+        cv.Optional(CONF_MOVEMENT_DIRECTION): text_sensor.text_sensor_schema(),
         cv.Optional(CONF_DEVICE_ID): text_sensor.text_sensor_schema(
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         ),
@@ -33,6 +35,9 @@ async def to_code(config):
     if CONF_MOVEMENT_CLASS in config:
         sens = await text_sensor.new_text_sensor(config[CONF_MOVEMENT_CLASS])
         cg.add(hub.set_movement_class_text_sensor(sens))
+    if CONF_MOVEMENT_DIRECTION in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_MOVEMENT_DIRECTION])
+        cg.add(hub.set_movement_direction_text_sensor(sens))
     if CONF_DEVICE_ID in config:
         sens = await text_sensor.new_text_sensor(config[CONF_DEVICE_ID])
         cg.add(hub.set_device_id_text_sensor(sens))

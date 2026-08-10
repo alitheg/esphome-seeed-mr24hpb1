@@ -28,6 +28,7 @@ class MR24HPB1 : public PollingComponent, public uart::UARTDevice {
   void set_motion_binary_sensor(binary_sensor::BinarySensor *s) { motion_binary_sensor_ = s; }
   void set_movement_pct_sensor(sensor::Sensor *s) { movement_pct_sensor_ = s; }
   void set_movement_class_text_sensor(text_sensor::TextSensor *s) { movement_class_text_sensor_ = s; }
+  void set_movement_direction_text_sensor(text_sensor::TextSensor *s) { movement_direction_text_sensor_ = s; }
   void set_device_id_text_sensor(text_sensor::TextSensor *s) { device_id_text_sensor_ = s; }
   void set_software_version_text_sensor(text_sensor::TextSensor *s) { software_version_text_sensor_ = s; }
   void set_hardware_version_text_sensor(text_sensor::TextSensor *s) { hardware_version_text_sensor_ = s; }
@@ -62,6 +63,7 @@ class MR24HPB1 : public PollingComponent, public uart::UARTDevice {
   binary_sensor::BinarySensor *motion_binary_sensor_{nullptr};
   sensor::Sensor *movement_pct_sensor_{nullptr};
   text_sensor::TextSensor *movement_class_text_sensor_{nullptr};
+  text_sensor::TextSensor *movement_direction_text_sensor_{nullptr};
   text_sensor::TextSensor *device_id_text_sensor_{nullptr};
   text_sensor::TextSensor *software_version_text_sensor_{nullptr};
   text_sensor::TextSensor *hardware_version_text_sensor_{nullptr};

@@ -48,6 +48,8 @@ text_sensor:
   - platform: seeed_mr24hpb1
     movement_class:
       name: "Radar Movement Class"
+    movement_direction:
+      name: "Radar Movement Direction"
     device_id:
       name: "Radar Device ID"
       entity_category: "diagnostic"

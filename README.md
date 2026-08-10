@@ -55,6 +55,8 @@ text_sensor:
   - platform: seeed_mr24hpb1
     movement_class:
       name: "Radar Movement Class"
+    movement_direction:
+      name: "Radar Movement Direction"
     device_id:
       name: "Radar Device ID"
     software_version:
@@ -91,6 +93,7 @@ button:
 
 ### Text sensors
 - **movement_class**: classification derived from the percentage - unoccupied, resting, micro-movement, walking, running
+- **movement_direction**: which way a target is moving relative to the radar - none, approach, away, sustained-approach, sustained-away. The module's only directional cue; useful for telling someone walking in from someone passing the doorway.
 - **device_id**: the module's device ID (reads `unset` if none is programmed)
 - **software_version**: firmware version reported by the module
 - **hardware_version**: hardware revision reported by the module

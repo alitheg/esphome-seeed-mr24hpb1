@@ -116,6 +116,22 @@ void MR24HPB1::parse_frame_(std::vector<uint8_t> &bytes) {
     if (movement_pct_sensor_) movement_pct_sensor_->publish_state(pct);
     if (movement_class_text_sensor_) movement_class_text_sensor_->publish_state(cls);
 
+  } else if (addr1 == 0x03 && addr2 == 0x07 && len >= 11) {
+    // Approach/away status (manual 7.2): data is 0x01 0x01 <dir>, dir at
+    // bytes[8]. This is the module's only directional signal - it tells a
+    // person walking in from one just passing the doorway, which raw presence
+    // cannot.
+    const char *dir;
+    switch (bytes[8]) {
+      case 0x01: dir = "none"; break;
+      case 0x02: dir = "approach"; break;
+      case 0x03: dir = "away"; break;
+      case 0x04: dir = "sustained-approach"; break;
+      case 0x05: dir = "sustained-away"; break;
+      default: dir = "unknown"; break;
+    }
+    if (movement_direction_text_sensor_) movement_direction_text_sensor_->publish_state(dir);
+
   } else if (addr1 == 0x01 && addr2 == 0x01 && len >= 19) {
     std::string idstr;
     bool has_printable = false;
