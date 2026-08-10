@@ -17,7 +17,7 @@ Add the following to your ESPHome configuration:
 
 ```yaml
 external_components:
-  - source: github://alitheg/esphome-seeed-mr24hpb1@v2.0.0
+  - source: github://alitheg/esphome-seeed-mr24hpb1@v2.1.0
 ```
 
 ## Configuration
